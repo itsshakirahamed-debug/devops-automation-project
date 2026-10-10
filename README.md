@@ -39,7 +39,7 @@ devops-automation-project/
 
 ### 1. Terraform Infrastructure
 - `provider.tf` configures the AWS provider (`hashicorp/aws ~> 6.0`).
-- `variables.tf` defines AWS region (`ap-south-1`), key pair name (`webserver-key`), and instance size (`t3.micro`).
+- `variables.tf` defines AWS region (`ap-southeast-2`), key pair name (`webserver-key`), and instance size (`t3.micro`).
 - `vpc.tf` provisions a dedicated VPC (`11.0.0.0/16`), public subnets, internet gateway, route table, and security group.
 - `ec2.tf` dynamically fetches the latest official Ubuntu 22.04 LTS AMI and provisions the server.
 - **Cloud-Init (User Data)** installs Docker on first boot and starts a test Apache container on port `8080`.
