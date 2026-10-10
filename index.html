@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevOps Pipeline Demo - Interactive Neon Physics Matrix</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #08090e;
+            --card-bg: rgba(18, 22, 34, 0.65);
+            --card-border: rgba(255, 255, 255, 0.12);
+            --accent-cyan: #00f2fe;
+            --accent-purple: #9d4edd;
+            --accent-pink: #ff2a85;
+            --accent-green: #00e676;
+            --text-main: #f0f4f8;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            font-family: 'Outfit', sans-serif;
+            color: var(--text-main);
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 1;
+        }
+
+        /* Glassmorphism Dashboard Header & Overlay */
+        .hud-overlay {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            width: 90%;
+            max-width: 960px;
+            pointer-events: none;
+        }
+
+        .hud-card {
+            pointer-events: auto;
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 20px 28px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .hud-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .brand-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-icon {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 0 20px rgba(0, 242, 254, 0.4);
+        }
+
+        .brand-text h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(90deg, #ffffff, #a5b4fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-text p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0, 230, 118, 0.12);
+            border: 1px solid rgba(0, 230, 118, 0.3);
+            color: var(--accent-green);
+            padding: 6px 14px;
+            border-radius: 30px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-green);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent-green);
+            animation: pulse 1.8s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(0, 230, 118, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 230, 118, 0); }
+        }
+
+        /* Tech Pipeline Tags */
+        .pipeline-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding-top: 4px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .tag {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .tag span {
+            color: var(--accent-cyan);
+        }
+
+        /* Controls Panel */
+        .control-bar {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--card-border);
+            padding: 10px 18px;
+            border-radius: 40px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .btn:hover {
+            background: linear-gradient(135deg, rgba(0, 242, 254, 0.2), rgba(157, 78, 221, 0.2));
+            border-color: var(--accent-cyan);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 242, 254, 0.25);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn.active {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            border-color: transparent;
+            color: #000;
+            font-weight: 700;
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
+        }
+
+        .stat-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            padding: 0 8px;
+        }
+
+        .stat-badge strong {
+            color: var(--accent-cyan);
+        }
+
+        /* Interactive Hint */
+        .click-hint {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 5;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.4);
+            font-family: 'JetBrains Mono', monospace;
+            pointer-events: none;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            animation: bounce-hint 2s infinite;
+        }
+
+        @keyframes bounce-hint {
+            0%, 100% { transform: translate(-50%, 0); }
+            50% { transform: translate(-50%, -6px); }
+        }
+
+        @media (max-width: 600px) {
+            .hud-overlay { width: 94%; top: 12px; }
+            .hud-card { padding: 14px 18px; gap: 10px; }
+            .brand-text h1 { font-size: 1rem; }
+            .pipeline-tags { display: none; }
+            .control-bar { bottom: 12px; padding: 8px 12px; gap: 8px; }
+            .btn { padding: 6px 12px; font-size: 0.75rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="canvas"></canvas>
+
+    <!-- Header Overlay -->
+    <div class="hud-overlay">
+        <div class="hud-card">
+            <div class="hud-header">
+                <div class="brand-title">
+                    <div class="brand-icon">⚡</div>
+                    <div class="brand-text">
+                        <h1>DevOps Automated Deployment</h1>
+                        <p>End-to-End Infrastructure & CI/CD Pipeline</p>
+                    </div>
+                </div>
+                <div class="status-badge">
+                    <span class="pulse-dot"></span>
+                    <span>CONTAINER DEPLOYED</span>
+                </div>
+            </div>
+
+            <div class="pipeline-tags">
+                <div class="tag"><span>Git</span> GitHub Main</div>
+                <div class="tag"><span>Build</span> Jenkins Freestyle</div>
+                <div class="tag"><span>Registry</span> GHCR Container</div>
+                <div class="tag"><span>IaC</span> Terraform v6.0</div>
+                <div class="tag"><span>Cloud</span> AWS EC2 (ap-south-1)</div>
+                <div class="tag"><span>Runtime</span> Apache httpd:2.4</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="click-hint">✨ Click or Drag on screen to spawn & manipulate neon orbs</div>
+
+    <!-- Controls -->
+    <div class="control-bar">
+        <button class="btn" id="btn-add">➕ Spawn +10</button>
+        <button class="btn" id="btn-gravity">🌌 Gravity: <span id="gravity-status">OFF</span></button>
+        <button class="btn" id="btn-glow">✨ Glow Trail: <span id="glow-status">ON</span></button>
+        <button class="btn" id="btn-clear">🧹 Clear All</button>
+        <div class="stat-badge">Orbs: <strong id="orb-count">0</strong></div>
+        <div class="stat-badge">FPS: <strong id="fps-count">60</strong></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // DOM elements
+        const orbCountEl = document.getElementById('orb-count');
+        const fpsCountEl = document.getElementById('fps-count');
+        const btnAdd = document.getElementById('btn-add');
+        const btnGravity = document.getElementById('btn-gravity');
+        const gravityStatus = document.getElementById('gravity-status');
+        const btnGlow = document.getElementById('btn-glow');
+        const glowStatus = document.getElementById('glow-status');
+        const btnClear = document.getElementById('btn-clear');
+
+        let width, height;
+        let balls = [];
+        let particles = [];
+        let isGravityOn = false;
+        let isGlowOn = true;
+        let mouse = { x: null, y: null, isDown: false, radius: 150 };
+
+        // Color palettes for glowing neon balls
+        const neonPalettes = [
+            { main: '#00f2fe', glow: 'rgba(0, 242, 254, 0.6)' },   // Cyan
+            { main: '#9d4edd', glow: 'rgba(157, 78, 221, 0.6)' },  // Electric Purple
+            { main: '#ff2a85', glow: 'rgba(255, 42, 133, 0.6)' },  // Neon Pink
+            { main: '#00e676', glow: 'rgba(0, 230, 118, 0.6)' },   // Spring Green
+            { main: '#ffb703', glow: 'rgba(255, 183, 3, 0.6)' },   // Amber Gold
+            { main: '#7000ff', glow: 'rgba(112, 0, 255, 0.6)' }    // Deep Neon Blue
+        ];
+
+        function resizeCanvas() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Ball {
+            constructor(x, y, vx, vy, radius) {
+                this.x = x || Math.random() * (width - 60) + 30;
+                this.y = y || Math.random() * (height - 60) + 30;
+                this.vx = vx || (Math.random() - 0.5) * 8;
+                this.vy = vy || (Math.random() - 0.5) * 8;
+                this.radius = radius || Math.random() * 20 + 16;
+                this.palette = neonPalettes[Math.floor(Math.random() * neonPalettes.length)];
+                this.mass = this.radius;
+                this.elasticity = 0.92;
+            }
+
+            update() {
+                // Gravity handling
+                if (isGravityOn) {
+                    this.vy += 0.25;
+                }
+
+                // Air friction
+                this.vx *= 0.998;
+                this.vy *= 0.998;
+
+                // Position update
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Mouse Repulsion / Attraction
+                if (mouse.x !== null && mouse.y !== null) {
+                    let dx = this.x - mouse.x;
+                    let dy = this.y - mouse.y;
+                    let dist = Math.hypot(dx, dy);
+
+                    if (dist < mouse.radius && dist > 0) {
+                        let force = (mouse.radius - dist) / mouse.radius;
+                        let angle = Math.atan2(dy, dx);
+                        let push = mouse.isDown ? -force * 2 : force * 1.5;
+                        this.vx += Math.cos(angle) * push;
+                        this.vy += Math.sin(angle) * push;
+                    }
+                }
+
+                // Boundary Bounce
+                if (this.x - this.radius <= 0) {
+                    this.x = this.radius;
+                    this.vx = -this.vx * this.elasticity;
+                    this.createSparks(this.x, this.y);
+                } else if (this.x + this.radius >= width) {
+                    this.x = width - this.radius;
+                    this.vx = -this.vx * this.elasticity;
+                    this.createSparks(this.x, this.y);
+                }
+
+                if (this.y - this.radius <= 0) {
+                    this.y = this.radius;
+                    this.vy = -this.vy * this.elasticity;
+                    this.createSparks(this.x, this.y);
+                } else if (this.y + this.radius >= height) {
+                    this.y = height - this.radius;
+                    this.vy = -this.vy * this.elasticity;
+                    this.createSparks(this.x, this.y);
+                }
+            }
+
+            createSparks(x, y) {
+                for (let i = 0; i < 4; i++) {
+                    particles.push(new Spark(x, y, this.palette.main));
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+
+                if (isGlowOn) {
+                    ctx.shadowColor = this.palette.main;
+                    ctx.shadowBlur = 20;
+                }
+
+                let grad = ctx.createRadialGradient(
+                    this.x - this.radius * 0.3,
+                    this.y - this.radius * 0.3,
+                    this.radius * 0.1,
+                    this.x,
+                    this.y,
+                    this.radius
+                );
+                grad.addColorStop(0, '#ffffff');
+                grad.addColorStop(0.3, this.palette.main);
+                grad.addColorStop(1, '#050811');
+
+                ctx.fillStyle = grad;
+                ctx.fill();
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        class Spark {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 6;
+                this.vy = (Math.random() - 0.5) * 6;
+                this.radius = Math.random() * 3 + 1;
+                this.color = color;
+                this.life = 1.0;
+                this.decay = Math.random() * 0.04 + 0.02;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // Ball Collision Physics
+        function handleBallCollisions() {
+            for (let i = 0; i < balls.length; i++) {
+                for (let j = i + 1; j < balls.length; j++) {
+                    let b1 = balls[i];
+                    let b2 = balls[j];
+
+                    let dx = b2.x - b1.x;
+                    let dy = b2.y - b1.y;
+                    let dist = Math.hypot(dx, dy);
+                    let minDist = b1.radius + b2.radius;
+
+                    if (dist < minDist) {
+                        // Separate balls
+                        let overlap = minDist - dist;
+                        let nx = dx / dist;
+                        let ny = dy / dist;
+
+                        b1.x -= nx * overlap * 0.5;
+                        b1.y -= ny * overlap * 0.5;
+                        b2.x += nx * overlap * 0.5;
+                        b2.y += ny * overlap * 0.5;
+
+                        // Elastic collision velocity calculation
+                        let kx = b1.vx - b2.vx;
+                        let ky = b1.vy - b2.vy;
+                        let p = 2 * (nx * kx + ny * ky) / (b1.mass + b2.mass);
+
+                        b1.vx -= p * b2.mass * nx;
+                        b1.vy -= p * b2.mass * ny;
+                        b2.vx += p * b1.mass * nx;
+                        b2.vy += p * b1.mass * ny;
+                    }
+                }
+            }
+        }
+
+        // Initial setup
+        function spawnBalls(count) {
+            for (let i = 0; i < count; i++) {
+                balls.push(new Ball());
+            }
+            updateOrbCountDisplay();
+        }
+
+        function updateOrbCountDisplay() {
+            orbCountEl.textContent = balls.length;
+        }
+
+        // Mouse Events
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        window.addEventListener('mouseleave', () => {
+            mouse.x = null;
+            mouse.y = null;
+        });
+
+        window.addEventListener('mousedown', (e) => {
+            // Don't spawn if clicking HUD controls
+            if (e.target.closest('.hud-card') || e.target.closest('.control-bar')) return;
+
+            mouse.isDown = true;
+            // Spawn 5 neon balls at click position
+            for (let i = 0; i < 5; i++) {
+                let angle = Math.random() * Math.PI * 2;
+                let speed = Math.random() * 7 + 3;
+                balls.push(new Ball(
+                    e.clientX,
+                    e.clientY,
+                    Math.cos(angle) * speed,
+                    Math.sin(angle) * speed,
+                    Math.random() * 16 + 14
+                ));
+            }
+            updateOrbCountDisplay();
+        });
+
+        window.addEventListener('mouseup', () => {
+            mouse.isDown = false;
+        });
+
+        // Control Buttons Logic
+        btnAdd.addEventListener('click', () => {
+            spawnBalls(10);
+        });
+
+        btnGravity.addEventListener('click', () => {
+            isGravityOn = !isGravityOn;
+            gravityStatus.textContent = isGravityOn ? 'ON' : 'OFF';
+            btnGravity.classList.toggle('active', isGravityOn);
+        });
+
+        btnGlow.addEventListener('click', () => {
+            isGlowOn = !isGlowOn;
+            glowStatus.textContent = isGlowOn ? 'ON' : 'OFF';
+            btnGlow.classList.toggle('active', isGlowOn);
+        });
+
+        btnClear.addEventListener('click', () => {
+            balls = [];
+            particles = [];
+            updateOrbCountDisplay();
+        });
+
+        // FPS Calculation
+        let lastFrameTime = performance.now();
+        let frameCount = 0;
+
+        // Animation Loop
+        function animate(now) {
+            // Background clearing with fade trail effect when glow is on
+            if (isGlowOn) {
+                ctx.fillStyle = 'rgba(8, 9, 14, 0.35)';
+                ctx.fillRect(0, 0, width, height);
+            } else {
+                ctx.clearRect(0, 0, width, height);
+            }
+
+            // Update & Draw Particles (Sparks)
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.update();
+                p.draw();
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            // Update & Draw Balls
+            handleBallCollisions();
+            balls.forEach(ball => {
+                ball.update();
+                ball.draw();
+            });
+
+            // FPS Counter Update
+            frameCount++;
+            if (now - lastFrameTime >= 1000) {
+                fpsCountEl.textContent = frameCount;
+                frameCount = 0;
+                lastFrameTime = now;
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // Start with 25 balls
+        spawnBalls(25);
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>
