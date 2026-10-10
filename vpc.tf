@@ -1,9 +1,14 @@
+# Fetch available AWS Availability Zones in the active region dynamically
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
 # VPC
 resource "aws_vpc" "devops-vpc" {
   cidr_block       = "11.0.0.0/16"
   instance_tenancy = "default"
   tags = {
-    Name = "My VPC"
+    Name = "devops-automation-vpc"
   }
 }
 
@@ -12,10 +17,10 @@ resource "aws_subnet" "pub_sub1" {
   vpc_id                  = aws_vpc.devops-vpc.id
   cidr_block              = "11.0.2.0/24"
   map_public_ip_on_launch = true
-  availability_zone       = "ap-south-1a"
+  availability_zone       = data.aws_availability_zones.available.names[0]
 
   tags = {
-    Name = "public subnet"
+    Name = "public-subnet-1"
   }
 }
 
@@ -24,10 +29,10 @@ resource "aws_subnet" "pub_sub2" {
   vpc_id                  = aws_vpc.devops-vpc.id
   cidr_block              = "11.0.3.0/24"
   map_public_ip_on_launch = true
-  availability_zone       = "ap-south-1b"
+  availability_zone       = data.aws_availability_zones.available.names[1]
 
   tags = {
-    Name = "public subnet"
+    Name = "public-subnet-2"
   }
 }
 
@@ -36,7 +41,7 @@ resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.devops-vpc.id
 
   tags = {
-    Name = "My IGW"
+    Name = "devops-igw"
   }
 }
 
@@ -50,7 +55,7 @@ resource "aws_route_table" "route-table" {
   }
 
   tags = {
-    Name = "My RT"
+    Name = "devops-route-table"
   }
 }
 
@@ -76,12 +81,14 @@ resource "aws_default_security_group" "default" {
     to_port     = 22
     cidr_blocks = ["0.0.0.0/0"]
   }
+
   ingress {
     protocol    = "tcp"
     from_port   = 80
     to_port     = 80
     cidr_blocks = ["0.0.0.0/0"]
   }
+
   ingress {
     protocol    = "tcp"
     from_port   = 8080
@@ -95,5 +102,4 @@ resource "aws_default_security_group" "default" {
     to_port     = 0
     cidr_blocks = ["0.0.0.0/0"]
   }
-
 }
