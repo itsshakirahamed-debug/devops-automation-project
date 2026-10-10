@@ -5,9 +5,9 @@ variable "aws_region" {
 }
 
 variable "key_name" {
-  description = "Name of your AWS EC2 Key Pair (create this in AWS EC2 Console in ap-southeast-2 before running)"
+  description = "Name of your AWS EC2 Key Pair in ap-southeast-2 (leave blank '' if no SSH key pair exists)"
   type        = string
-  default     = "webserver-key"
+  default     = ""
 }
 
 variable "instance_type" {
