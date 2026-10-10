@@ -1,105 +1,51 @@
-# Fetch available AWS Availability Zones in the active region dynamically
-data "aws_availability_zones" "available" {
-  state = "available"
+# Use the pre-existing Default VPC in the configured region (bypasses SCP CreateVpc restrictions)
+data "aws_vpc" "default" {
+  default = true
 }
 
-# VPC
-resource "aws_vpc" "devops-vpc" {
-  cidr_block       = "11.0.0.0/16"
-  instance_tenancy = "default"
-  tags = {
-    Name = "devops-automation-vpc"
+# Fetch default subnets from the Default VPC
+data "aws_subnets" "default" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
   }
 }
 
-# Public Subnet 1
-resource "aws_subnet" "pub_sub1" {
-  vpc_id                  = aws_vpc.devops-vpc.id
-  cidr_block              = "11.0.2.0/24"
-  map_public_ip_on_launch = true
-  availability_zone       = data.aws_availability_zones.available.names[0]
-
-  tags = {
-    Name = "public-subnet-1"
-  }
-}
-
-# Public Subnet 2
-resource "aws_subnet" "pub_sub2" {
-  vpc_id                  = aws_vpc.devops-vpc.id
-  cidr_block              = "11.0.3.0/24"
-  map_public_ip_on_launch = true
-  availability_zone       = data.aws_availability_zones.available.names[1]
-
-  tags = {
-    Name = "public-subnet-2"
-  }
-}
-
-# Internet Gateway
-resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.devops-vpc.id
-
-  tags = {
-    Name = "devops-igw"
-  }
-}
-
-# Route Table
-resource "aws_route_table" "route-table" {
-  vpc_id = aws_vpc.devops-vpc.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.igw.id
-  }
-
-  tags = {
-    Name = "devops-route-table"
-  }
-}
-
-# Route Table Association 1
-resource "aws_route_table_association" "rt-assoc-1" {
-  subnet_id      = aws_subnet.pub_sub1.id
-  route_table_id = aws_route_table.route-table.id
-}
-
-# Route Table Association 2
-resource "aws_route_table_association" "rt-assoc-2" {
-  subnet_id      = aws_subnet.pub_sub2.id
-  route_table_id = aws_route_table.route-table.id
-}
-
-# Security Group
-resource "aws_default_security_group" "default" {
-  vpc_id = aws_vpc.devops-vpc.id
+# Security Group allowing SSH (22), HTTP (80), and Test Container (8080)
+resource "aws_security_group" "web_sg" {
+  name        = "devops-automation-sg"
+  description = "Security group for DevOps Automation application"
+  vpc_id      = data.aws_vpc.default.id
 
   ingress {
-    protocol    = "tcp"
     from_port   = 22
     to_port     = 22
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
-    protocol    = "tcp"
     from_port   = 80
     to_port     = 80
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
-    protocol    = "tcp"
     from_port   = 8080
     to_port     = 8080
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
-    protocol    = "-1"
     from_port   = 0
     to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "devops-automation-sg"
   }
 }

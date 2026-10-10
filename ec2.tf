@@ -18,8 +18,8 @@ resource "aws_instance" "instance1" {
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = var.instance_type
   key_name               = var.key_name
-  subnet_id              = aws_subnet.pub_sub1.id
-  vpc_security_group_ids = [aws_default_security_group.default.id]
+  subnet_id              = data.aws_subnets.default.ids[0]
+  vpc_security_group_ids = [aws_security_group.web_sg.id]
 
   tags = {
     Name = "devops-automation-instance"
