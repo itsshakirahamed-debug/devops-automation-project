@@ -1,12 +1,28 @@
+# Fetch the latest official Ubuntu 22.04 LTS AMI dynamically
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  owners      = ["099720109477"] # Canonical owner ID
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
 resource "aws_instance" "instance1" {
-  ami                    = "ami-006f82a1d5a27da54"
-  instance_type          = "t3.micro"
-  key_name               = "webserver-key"
+  ami                    = data.aws_ami.ubuntu.id
+  instance_type          = var.instance_type
+  key_name               = var.key_name
   subnet_id              = aws_subnet.pub_sub1.id
   vpc_security_group_ids = [aws_default_security_group.default.id]
 
   tags = {
-    Name = "devops-project-instance-1"
+    Name = "devops-automation-instance"
     team = "devops-project"
   }
 
@@ -20,32 +36,7 @@ resource "aws_instance" "instance1" {
   EOF
 }
 
-resource "aws_instance" "instance2" {
-  ami                    = "ami-006f82a1d5a27da54"
-  instance_type          = "t3.micro"
-  key_name               = "webserver-key"
-  subnet_id              = aws_subnet.pub_sub2.id
-  vpc_security_group_ids = [aws_default_security_group.default.id]
-
-  tags = {
-    Name = "devops-project-instance-2"
-    team = "devops-project"
-  }
-
-  user_data = <<-EOF
-    #!/bin/bash
-    apt-get update -y
-    apt-get install -y docker.io
-    systemctl enable --now docker
-    usermod -aG docker ubuntu
-    docker run -d --name test --restart always -p 8080:80 httpd:2.4
-  EOF
-}
-
-output "instance1_public_ip" {
-  value = aws_instance.instance1.public_ip
-}
-
-output "instance2_public_ip" {
-  value = aws_instance.instance2.public_ip
+output "public_ip" {
+  value       = aws_instance.instance1.public_ip
+  description = "Public IP address of the deployed AWS EC2 instance"
 }

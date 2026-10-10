@@ -7,7 +7,7 @@ terraform {
   }
 }
 
-# Configure the AWS Provider
+# Configure the AWS Provider using variable
 provider "aws" {
-  region = "ap-south-1"
+  region = var.aws_region
 }

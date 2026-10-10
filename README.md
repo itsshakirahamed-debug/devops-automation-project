@@ -1,6 +1,6 @@
 # DevOps Automation Project
 
-A simple end-to-end DevOps pipeline: code is pushed to GitHub, Jenkins builds a Docker image and pushes it to GitHub Container Registry (GHCR), and Terraform provisions an AWS EC2 server that runs the container.
+An end-to-end DevOps CI/CD pipeline: Code is pushed to GitHub (`itsshakirahamed-debug/devops-automation-project`), Jenkins builds a Docker image and pushes it to GitHub Container Registry (GHCR), and Terraform provisions an AWS EC2 server running the interactive containerized web application.
 
 ## Architecture
 
@@ -15,135 +15,115 @@ Git (local) → GitHub → Jenkins ─┬─ docker build + push → GHCR (ghcr.
 
 | Tool | Purpose |
 |---|---|
-| Git / GitHub | Version control and source hosting |
-| Terraform | Infrastructure as code (EC2 instance) |
-| Docker | Containerizing the frontend (Apache httpd) |
-| Jenkins | Automation: build, push, provision |
-| GHCR | Docker image registry |
-| AWS EC2 | Production server |
+| Git / GitHub | Version control & repository hosting |
+| Terraform | Infrastructure as Code (VPC, Subnets, Security Group, EC2) |
+| Docker | Containerizing the frontend (Apache httpd:2.4) |
+| Jenkins | CI/CD Automation (build, push image, provision infrastructure) |
+| GHCR | Docker Image Registry (`ghcr.io/itsshakirahamed-debug/devops-automation-project`) |
+| AWS EC2 | Production Cloud Server (`t3.micro` Ubuntu) |
 
 ## Project Structure
 
 ```
-devops-project/
-├── provider.tf    # AWS provider (region: ap-south-1)
-├── ec2.tf         # EC2 instance, user data, output
+devops-automation-project/
+├── provider.tf    # AWS provider configuration
+├── variables.tf   # Configurable variables (region, key_name, instance_type)
+├── vpc.tf         # VPC, Subnets, Internet Gateway & Security Group
+├── ec2.tf         # Dynamic Ubuntu AMI EC2 Instance & Cloud-Init Docker bootstrap
 ├── Dockerfile     # httpd image serving index.html
-├── index.html     # Simple frontend page
-└── .gitignore     # Excludes Terraform state and keys
+├── index.html     # Interactive Neon Physics Matrix & DevOps HUD
+└── .gitignore     # Excludes Terraform state & SSH key files
 ```
 
 ## How It Works
 
-### 1. Terraform
-- `provider.tf` configures the AWS provider (`hashicorp/aws ~> 6.0`, region `ap-south-1`).
-- `ec2.tf` creates an Ubuntu EC2 instance (`t3.micro`) with a key pair and security group.
-- **User data** runs on first boot: installs Docker and starts a test `httpd` container on port 8080.
-- The instance's public IP is exposed as an output (`public_ip`).
+### 1. Terraform Infrastructure
+- `provider.tf` configures the AWS provider (`hashicorp/aws ~> 6.0`).
+- `variables.tf` defines AWS region (`ap-south-1`), key pair name (`webserver-key`), and instance size (`t3.micro`).
+- `vpc.tf` provisions a dedicated VPC (`11.0.0.0/16`), public subnets, internet gateway, route table, and security group.
+- `ec2.tf` dynamically fetches the latest official Ubuntu 22.04 LTS AMI and provisions the server.
+- **Cloud-Init (User Data)** installs Docker on first boot and starts a test Apache container on port `8080`.
+- Outputs `public_ip` upon deployment completion.
 
-### 2. Docker
-The `Dockerfile` builds on `httpd:2.4` and copies `index.html` into Apache's web root (`/usr/local/apache2/htdocs/`).
+### 2. Docker Application
+The `Dockerfile` packages an interactive HTML5/JS physics simulation matrix overlaid with a glassmorphism DevOps pipeline status card into `httpd:2.4`.
 
-### 3. Jenkins (Freestyle project)
-- **Source Code Management:** this GitHub repo, branch `*/main`.
-- **Trigger:** Poll SCM.
-- **Credential bindings:**
-  - `GH_USER` / `GH_TOKEN`: GitHub username and personal access token (`write:packages`)
-  - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`: AWS access keys
-- **Build steps (Windows batch):**
+### 3. Jenkins Pipeline (Freestyle Project)
+- **SCM**: Repository `https://github.com/itsshakirahamed-debug/devops-automation-project.git`, branch `*/main`.
+- **Triggers**: Poll SCM (every 5 mins).
+- **Environment Credentials**:
+  - `GH_USER`: `itsshakirahamed-debug`
+  - `GH_TOKEN`: GitHub Personal Access Token (`write:packages`, `read:packages`)
+  - `AWS_ACCESS_KEY_ID`: AWS IAM Access Key ID
+  - `AWS_SECRET_ACCESS_KEY`: AWS IAM Secret Access Key
 
+#### Windows Batch Build Commands:
 ```bat
-docker build -t ghcr.io/dafydcodes/devops-project:latest .
+:: Build and push Docker image to GHCR
+docker build -t ghcr.io/%GH_USER%/devops-automation-project:latest .
 echo %GH_TOKEN%| docker login ghcr.io -u %GH_USER% --password-stdin
-docker push ghcr.io/dafydcodes/devops-project:latest
-```
+docker push ghcr.io/%GH_USER%/devops-automation-project:latest
 
-```bat
+:: Initialize and apply Terraform infrastructure
 terraform init -input=false
 terraform apply -auto-approve -input=false
 terraform output -raw public_ip
 ```
 
-> Do not enable "Delete workspace before build starts". The Terraform state file lives in the workspace.
+---
 
-## Prerequisites
+## Step-by-Step Setup Guide
 
-- AWS account, an existing EC2 key pair (`webserver-key`) and security group (`terraform-group`) in `ap-south-1`
-- Security group rules:
-  - Inbound: 22 (SSH), 80 (HTTP), 8080 (test container)
-  - Outbound: all traffic (needed to pull images)
-- Jenkins server with `git`, `docker` (Docker Desktop, Linux containers) and `terraform` on the PATH
-- GitHub personal access token with `write:packages` (and `read:packages` for pulling)
+### 1. Create AWS Credentials & Key Pair
+1. Log in to AWS Management Console.
+2. Go to **EC2** → **Key Pairs** → **Create key pair**:
+   - Name: `webserver-key`
+   - File format: `.pem`
+   - Download and keep `webserver-key.pem` safe.
+3. Go to **IAM** → **Users** → Generate **Access Key ID** & **Secret Access Key**.
 
-## Deployment Steps
+### 2. Generate GitHub Personal Access Token (PAT)
+1. Go to GitHub → **Settings** → **Developer Settings** → **Personal Access Tokens (classic)**.
+2. Click **Generate new token**.
+3. Enable scopes: `write:packages`, `read:packages`, `delete:packages`.
+4. Copy the token string.
 
-1. Push the code to GitHub:
+### 3. Add Jenkins Credentials
+In Jenkins → **Manage Jenkins** → **Credentials** → **Global credentials**:
+- `GH_USER` (Secret text): `itsshakirahamed-debug`
+- `GH_TOKEN` (Secret text): Your GitHub PAT
+- `AWS_ACCESS_KEY_ID` (Secret text): Your AWS Access Key ID
+- `AWS_SECRET_ACCESS_KEY` (Secret text): Your AWS Secret Access Key
+
+### 4. Deploy Infrastructure & Container
+1. Trigger **Build Now** in Jenkins.
+2. Copy the EC2 Public IP from Jenkins Console Output.
+3. SSH into the EC2 instance:
    ```bash
-   git add .
-   git commit -m "your message"
-   git push origin main
+   ssh -i webserver-key.pem ubuntu@<EC2_PUBLIC_IP>
    ```
-2. Jenkins detects the change, builds and pushes the image, and creates the EC2.
-3. Get the public IP from the end of the Jenkins console output.
-4. SSH into the server:
+4. Authenticate GHCR and run production container:
    ```bash
-   ssh -i webserver-key.pem ubuntu@<EC2_IP>
+   echo <GH_TOKEN> | docker login ghcr.io -u itsshakirahamed-debug --password-stdin
+   docker pull ghcr.io/itsshakirahamed-debug/devops-automation-project:latest
+   docker run -d --name web --restart always -p 80:80 ghcr.io/itsshakirahamed-debug/devops-automation-project:latest
    ```
-5. Log in to GHCR, pull and run the image:
-   ```bash
-   echo <GITHUB_TOKEN> | docker login ghcr.io -u DafydCodes --password-stdin
-   docker pull ghcr.io/dafydcodes/devops-project:latest
-   docker run -d --name web --restart always -p 80:80 ghcr.io/dafydcodes/devops-project:latest
-   ```
-6. Open `http://<EC2_IP>` in a browser.
+5. Open `http://<EC2_PUBLIC_IP>` in your browser.
 
-## Verifying
+---
 
-| URL | Expected |
+## Verifying Deployment
+
+| URL | Component |
 |---|---|
-| `http://<EC2_IP>:8080` | Apache default page (container started by user data) |
-| `http://<EC2_IP>` | The custom page from this repo (production container) |
+| `http://<EC2_PUBLIC_IP>:8080` | Default Apache test container (bootstrap check) |
+| `http://<EC2_PUBLIC_IP>` | **Production Interactive DevOps App** |
 
-## Redeploying After Changes
-
-After editing `index.html` and pushing, Jenkins rebuilds the image. On the server:
-
-```bash
-docker rm -f web
-docker pull ghcr.io/dafydcodes/devops-project:latest
-docker run -d --name web --restart always -p 80:80 ghcr.io/dafydcodes/devops-project:latest
-```
-
-## Troubleshooting
-
-| Problem | Fix |
-|---|---|
-| `Cannot run program "sh"` in Jenkins | Use "Execute Windows batch command" on Windows |
-| Empty `%GH_USER%` / `%GH_TOKEN%` in the log | Add the credential bindings in the job's Environment section |
-| `.pem` "permissions too open" on Windows | Use `icacls` to remove inherited permissions and grant only your user read access |
-| `docker login` times out on EC2 | Add an outbound "All traffic" rule to the security group |
-| Docker missing on EC2 | Check `/var/log/cloud-init-output.log` and make sure `.tf` files use LF line endings |
-| Pull is `unauthorized` | Check the token scope (`read:packages`) or make the package public |
+---
 
 ## Cleanup
 
-To avoid AWS charges, destroy the infrastructure when finished:
-
+To avoid unexpected AWS charges, destroy resources when finished:
 ```bash
-terraform destroy
+terraform destroy -auto-approve
 ```
-
-Or terminate the instance in the EC2 console.
-
-## Security Notes
-
-- Never commit `.pem` keys, tokens or `*.tfstate` files.
-- Restrict SSH (port 22) to your own IP instead of `0.0.0.0/0`.
-- Keep credentials in Jenkins credentials, not in scripts.
-
-## Possible Improvements
-
-- Automate the deploy step so Jenkins SSHes into the EC2 and runs the pull/run commands
-- Store Terraform state remotely in S3
-- Move the pipeline into a `Jenkinsfile`
-- Tag images with the build number instead of only `latest`
